@@ -11,9 +11,12 @@ namespace StreamLabs_Helper
 	class Server
 	{
 		static HttpListener _httpListener = new HttpListener();
+		Thread _responseThread;
 		const string defaultWelcome = "<html><head><title>Localhost server -- port 5000</title></head>" +
 				"<body>Welcome to the <strong>Localhost server</strong> -- <em>port 5000!</em></body></html>";
 		private string responseString;
+		private bool pause = false;
+		private object threadLock = new object();
 
 		public Server(string message = defaultWelcome)
 		{
@@ -30,7 +33,7 @@ namespace StreamLabs_Helper
 			_httpListener.Prefixes.Add("http://localhost:5000/"); // add prefix "http://localhost:5000/"
 			_httpListener.Start(); // start server (Run application as Administrator!)
 			Console.WriteLine("Server started.");
-			Thread _responseThread = new Thread(new ThreadStart(ResponseThread));
+			_responseThread = new Thread(new ThreadStart(ResponseThread));
 			_responseThread.Start(); // start the response thread
 		}
 
@@ -38,19 +41,44 @@ namespace StreamLabs_Helper
 		{
 			while (true)
 			{
-				HttpListenerContext context = _httpListener.GetContext(); // get a context
-																		  // Now, you'll find the request URL in context.Request.Url
-				byte[] _responseArray = Encoding.UTF8.GetBytes(responseString); // get the bytes to response
-				context.Response.OutputStream.Write(_responseArray, 0, _responseArray.Length); // write bytes to the output stream
-				context.Response.KeepAlive = false; // set the KeepAlive bool to false
-				context.Response.Close(); // close the connection
-				Console.WriteLine("Response given to a request.");
+				if (pause) //pauses the thread if pause is true
+				{
+					lock (threadLock)
+					{
+						Monitor.Wait(threadLock);
+					}
+				}
+				try
+				{
+					HttpListenerContext context = _httpListener.GetContext();
+					byte[] _responseArray = Encoding.UTF8.GetBytes(responseString); // encodes string in UTF-8
+					context.Response.OutputStream.Write(_responseArray, 0, _responseArray.Length);
+					context.Response.KeepAlive = false;
+					context.Response.Close();
+					Console.WriteLine("Response given to a request.");
+				}
+				catch
+				{
+					Console.WriteLine("httpListener killed");
+				}
 			}
 		}
 
 		public void UpdateResponse(string response)
 		{
 			responseString = response;
+		}
+
+		public void Close()
+		{
+			pause = true;
+			_httpListener.Stop();
+		}
+
+		~Server() //called when instance is destroyed, just in case it's not destroyed properly
+		{
+			pause = true;
+			_httpListener.Stop();
 		}
 	}
 }

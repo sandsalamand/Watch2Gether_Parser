@@ -11,11 +11,11 @@ namespace StreamLabs_Helper
 	class Server
 	{
 		static HttpListener _httpListener = new HttpListener();
-		const string temp = "<html><head><title>Localhost server -- port 5000</title></head>" +
+		const string defaultWelcome = "<html><head><title>Localhost server -- port 5000</title></head>" +
 				"<body>Welcome to the <strong>Localhost server</strong> -- <em>port 5000!</em></body></html>";
-		string responseString;
+		private string responseString;
 
-		public Server(string message = temp)
+		public Server(string message = defaultWelcome)
 		{
 			if (message != null)
 			{
@@ -46,6 +46,11 @@ namespace StreamLabs_Helper
 				context.Response.Close(); // close the connection
 				Console.WriteLine("Response given to a request.");
 			}
+		}
+
+		public void UpdateResponse(string response)
+		{
+			responseString = response;
 		}
 	}
 }

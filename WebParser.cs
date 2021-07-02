@@ -13,14 +13,15 @@ namespace StreamLabs_Helper
 	class WebParser
 	{
 		private static IWebDriver webDriver;
+
 		public WebParser()
 		{
 			webDriver = new EdgeDriver(@"C:\WebDrivers\bin\");
 
 		}
-		public string ParseUrl(string url)
+		public void FindIFrameOnPage(string url)
 		{
-			WebDriverWait wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(10));
+			WebDriverWait wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(5));
 			webDriver.Navigate().GoToUrl(url);
 
 			var button = webDriver.FindElement(By.CssSelector(".ui.green.button"));
@@ -28,22 +29,18 @@ namespace StreamLabs_Helper
 
 			Thread.Sleep(4000);
 			var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
-			var iframe = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
-			webDriver.SwitchTo().Frame(iframe.First());
+			var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
+			webDriver.SwitchTo().Frame(iframes.First());
+		}
+
+		public string GetIFrameTitle()
+		{
 			var title = FindElements(By.CssSelector(".ytp-chrome-top"));
 
 			string titleText = title.First().Text;
 			var strArray = titleText.Split('\n');
 			return strArray[0]; //return the string before the newline
-
-			//wait.Until(webDriver => webDriver.FindElement(By.ClassName("ytp-title-text")).Displayed);
-
-			//foreach (var webElement in text)
-			//{
-			//	return webElement.Text;
-			//}
 		}
-
 		//loop until the elements load
 		private IReadOnlyCollection<IWebElement> FindElements(By by)
 		{
@@ -58,6 +55,7 @@ namespace StreamLabs_Helper
 			}
 		}
 
+		//same as above, but search from specific node
 		private IReadOnlyCollection<IWebElement> FindElementsFromElement(By by, IWebElement element)
 		{
 			while (true)

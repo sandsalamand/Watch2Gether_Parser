@@ -10,16 +10,20 @@ namespace StreamLabs_Helper
 		static WebParser parser;
 		static Server server;
 		const double timerInterval = 3000;
+		const string url = "https://w2g.tv/rooms/3hz9u1a99k0twpzyln?lang=en";
+
 		static void Main(string[] args)
 		{
 			server = new Server();
 			parser = new WebParser();
-			parser.FindIFrameOnPage("https://w2g.tv/rooms/v3gjuklie0gy3pbec3?lang=en");
-			Thread.Sleep(3000);
-			Set_Timer(timerInterval);
-			while (Console.ReadKey().Key != ConsoleKey.F8)
+			if (parser.FindIFrameOnPage(url))
 			{
-				//keeps the program alive
+				Thread.Sleep(3000);
+				Set_Timer(timerInterval);
+				while (Console.ReadKey().Key != ConsoleKey.F8)
+				{
+					//keep the program alive
+				}
 			}
 			CleanUp();
 		}

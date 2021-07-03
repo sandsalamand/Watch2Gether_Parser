@@ -31,7 +31,7 @@ namespace StreamLabs_Helper
 		{
 			Console.WriteLine("Starting server...");
 			_httpListener.Prefixes.Add("http://localhost:5000/"); // add prefix "http://localhost:5000/"
-			_httpListener.Start(); // start server (Run application as Administrator!)
+			_httpListener.Start(); // requires exe to be run as administrator
 			Console.WriteLine("Server started.");
 			_responseThread = new Thread(new ThreadStart(ResponseThread));
 			_responseThread.Start(); // start the response thread
@@ -64,7 +64,7 @@ namespace StreamLabs_Helper
 			}
 		}
 
-		public void UpdateResponse(string response)
+		public void UpdateResponse(string response) //updates the reponse that the server will display
 		{
 			responseString = response;
 		}

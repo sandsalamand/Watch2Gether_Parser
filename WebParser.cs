@@ -15,16 +15,47 @@ namespace StreamLabs_Helper
 	{
 		private static IWebDriver webDriver;
 		Actions mouseActions;
+		private MoveDirection moveDirection;
+
+		private enum Direction
+		{
+			Right = 1,
+			Left = -1,
+			None = 0
+		}
+
+		private struct MoveDirection
+		{
+			private Direction realValue;
+
+			public Direction Direction
+			{
+				get    //toggle the direction on every get
+				{
+					var beforeInvert = realValue;
+					realValue = (Direction)(-1 * (int)realValue);
+					return beforeInvert;
+				}
+				set { realValue = value; }
+			}
+		}
 
 		public WebParser()
 		{
-			webDriver = new EdgeDriver(@"C:\WebDrivers\bin\"); //
+			webDriver = new EdgeDriver(@"C:\WebDrivers\bin\");  //TODO: change to same directory as project files
+			moveDirection.Direction = Direction.Right;
 		}
 
-		public void FindIFrameOnPage(string url)
+		public bool FindIFrameOnPage(string url)
 		{
 			WebDriverWait wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(5));
-			webDriver.Navigate().GoToUrl(url);
+			try {
+				webDriver.Navigate().GoToUrl(url);
+			}
+			catch {
+				Console.WriteLine("URL does not exist");
+				return false;
+			}
 
 			var button = webDriver.FindElement(By.CssSelector(".ui.green.button"));
 			button.Click();     //find and click the button to join the watch2gether room
@@ -33,28 +64,27 @@ namespace StreamLabs_Helper
 			var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
 			var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
 			webDriver.SwitchTo().Frame(iframes.First());
+
+			mouseActions = new Actions(webDriver);
+			var mainVideo = FindElements(By.CssSelector("body"));
+			mouseActions.MoveToElement(mainVideo.First());
+			mouseActions.Build().Perform();
+			return true;
 		}
 
 		public string GetIFrameTitle()
 		{
+			//moves the mouse back and forth to keep the youtube title visible
 			mouseActions = new Actions(webDriver);
-			var mainVideo = FindElements(By.CssSelector("body")); //performance could be improved by caching this
-			mouseActions.MoveToElement(mainVideo.First()); //make the watch later icon visible
-			var mouseOverVideo = mouseActions.Build();
-			mouseOverVideo.Perform();
-
-			mouseActions = new Actions(webDriver);
-			var watchLaterIcon = FindElements(By.ClassName("ytp-watch-later-icon"));
-			mouseActions.MoveToElement(watchLaterIcon.First()); //make the title visible
-			var mouseOverWatchLater = mouseActions.Build();
-			mouseOverWatchLater.Perform();
+			mouseActions.MoveByOffset(10 * ((int)moveDirection.Direction), 0);
+			mouseActions.Build().Perform();
 
 			var title = FindElements(By.CssSelector(".ytp-chrome-top"));
 			string titleText = title.First().Text;
 
-			//returns the string before the newline (to remove "Watch Later" and "Share" from the string)
+			//returns the string before the newline to remove "Watch Later" and "Share" from the string
 			var strArray = titleText.Split('\n');
-			return strArray[0];		
+			return strArray[0];
 		}
 
 		//loop until the elements load
@@ -86,6 +116,11 @@ namespace StreamLabs_Helper
 		}
 
 		public void Destroy()
+		{
+			webDriver.Quit();
+		}
+
+		~WebParser()
 		{
 			webDriver.Quit();
 		}

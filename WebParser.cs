@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using OpenQA.Selenium.Interactions;
+using Microsoft.Edge.SeleniumTools;
+using System.Diagnostics;
+using System.IO;
 
 namespace StreamLabs_Helper
 {
@@ -16,6 +16,11 @@ namespace StreamLabs_Helper
 		private static IWebDriver webDriver;
 		Actions mouseActions;
 		private MoveDirection moveDirection;
+		private const string backSlash = "\\";
+		private string driverDirectory;
+		private const string driverBinaryName = "MicrosoftWebDriver.exe";
+		private string[] edgeArguments =  new string[]	{
+			"headless", "disable-gpu", "window-size=1600,1200", "disable-extensions", "mute-audio", "enable-logging=false" };
 
 		private enum Direction
 		{
@@ -42,7 +47,11 @@ namespace StreamLabs_Helper
 
 		public WebParser()
 		{
-			webDriver = new EdgeDriver(@"C:\WebDrivers\bin\");  //TODO: change to same directory as project files
+			driverDirectory = GetApplicationExecutableDirectoryName() + backSlash + "Drivers";
+			EdgeOptions edgeOptions = new EdgeOptions();
+			edgeOptions.UseChromium = true;
+			edgeOptions.AddArguments(edgeArguments);
+			webDriver = new Microsoft.Edge.SeleniumTools.EdgeDriver(driverDirectory, edgeOptions);
 			moveDirection.Direction = Direction.Right;
 		}
 
@@ -113,6 +122,11 @@ namespace StreamLabs_Helper
 
 				Thread.Sleep(10);
 			}
+		}
+
+		private string GetApplicationExecutableDirectoryName()
+		{
+			return Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
 		}
 
 		public void Destroy()

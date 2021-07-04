@@ -19,8 +19,9 @@ namespace StreamLabs_Helper
 			if (parser.FindIFrameOnPage(url))
 			{
 				Thread.Sleep(3000);
+				Console.WriteLine("\nProgram started. Press X to safely terminate\n");
 				Set_Timer(timerInterval);
-				while (Console.ReadKey().Key != ConsoleKey.F8)
+				while (Console.ReadKey().Key != ConsoleKey.X)
 				{
 					//keep the program alive
 				}

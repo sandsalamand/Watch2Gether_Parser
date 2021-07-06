@@ -28,7 +28,6 @@ namespace StreamLabs_Helper
 			Left = -1,
 			None = 0
 		}
-
 		private struct MoveDirection
 		{
 			private Direction realValue;
@@ -62,44 +61,56 @@ namespace StreamLabs_Helper
 				webDriver.Navigate().GoToUrl(url);
 			}
 			catch {
-				Console.WriteLine("URL does not exist");
+				Program.Error("URL does not exist", true);
 				return false;
 			}
+			try
+			{
+				var button = webDriver.FindElement(By.CssSelector(".ui.green.button"));
+				button.Click();     //find and click the button to join the watch2gether room
 
-			var button = webDriver.FindElement(By.CssSelector(".ui.green.button"));
-			button.Click();     //find and click the button to join the watch2gether room
+				var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
+				var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
+				webDriver.SwitchTo().Frame(iframes.First());
 
-			Thread.Sleep(4000);
-			var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
-			var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
-			webDriver.SwitchTo().Frame(iframes.First());
-
-			mouseActions = new Actions(webDriver);
-			var mainVideo = FindElements(By.CssSelector("body"));
-			mouseActions.MoveToElement(mainVideo.First());
-			mouseActions.Build().Perform();
+				mouseActions = new Actions(webDriver);
+				var mainVideo = FindElements(By.CssSelector("body"));
+				mouseActions.MoveToElement(mainVideo.First());
+				mouseActions.Build().Perform();
+			}
+			catch {
+				Program.Error("failed to parse");
+			}
 			return true;
 		}
 
 		public string GetIFrameTitle()
 		{
-			//moves the mouse back and forth to keep the youtube title visible
-			mouseActions = new Actions(webDriver);
-			mouseActions.MoveByOffset(10 * ((int)moveDirection.Direction), 0);
-			mouseActions.Build().Perform();
+			try
+			{
+				//moves the mouse back and forth to keep the youtube title visible
+				mouseActions = new Actions(webDriver);
+				mouseActions.MoveByOffset(10 * ((int)moveDirection.Direction), 0);
+				mouseActions.Build().Perform();
 
-			var title = FindElements(By.CssSelector(".ytp-chrome-top"));
-			string titleText = title.First().Text;
+				var title = FindElements(By.CssSelector(".ytp-chrome-top"));
+				string titleText = title.First().Text;
 
-			//returns the string before the newline to remove "Watch Later" and "Share" from the string
-			var strArray = titleText.Split('\n');
-			return strArray[0];
+				//returns the string before the newline to remove "Watch Later" and "Share" from the string
+				var strArray = titleText.Split('\n');
+				return strArray[0];
+			}
+			catch
+			{
+				Program.Error("failed to get iframe");
+				return null;
+			}
 		}
 
 		//loop until the elements load
 		private IReadOnlyCollection<IWebElement> FindElements(By by)
 		{
-			while (true)
+			while (webDriver is not null)
 			{
 				var elements = webDriver.FindElements(by);
 
@@ -108,12 +119,13 @@ namespace StreamLabs_Helper
 
 				Thread.Sleep(10);
 			}
+			return null;
 		}
 
 		//same as above, but search from specific node
 		private IReadOnlyCollection<IWebElement> FindElementsFromElement(By by, IWebElement element)
 		{
-			while (true)
+			while (webDriver is not null)
 			{
 				var elements = element.FindElements(by);
 
@@ -122,6 +134,7 @@ namespace StreamLabs_Helper
 
 				Thread.Sleep(10);
 			}
+			return null;
 		}
 
 		private string GetApplicationExecutableDirectoryName()

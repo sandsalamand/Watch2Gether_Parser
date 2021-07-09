@@ -11,8 +11,10 @@ namespace StreamLabs_Helper
 	{
 		static HttpListener _httpListener = new HttpListener();
 		Thread _responseThread;
-		const string defaultWelcome = "<html><head><title>Watch2Gether Title Displayer</title></head>" +
-				"<body><em>Server initializing.... Please be patient :)</em></body></html>";
+		const string responsePrefix = "<html><head><title>Watch2Gether Title Displayer</title></head><body>";
+		const string responseSuffix = "</body></html>";
+		const string defaultWelcome = responsePrefix + "<em>Server initializing.... If this takes longer than 10 seconds," +
+			"then it's bugged. Check to make sure a youtube video is playing (not a built-in Blender short), then restart this app.</em>" + responseSuffix;
 		private string responseString;
 		private bool pause = false;
 		private object threadLock = new object();
@@ -32,26 +34,26 @@ namespace StreamLabs_Helper
 					_httpListener.Prefixes.Add("http://+:80/Temporary_Listen_Addresses/2525/");
 					break;
 				case "network":
-					Program.Error("\n\n\n\n\n\n\nhello"); //debugging
+					ProgramManager.Error("\n\n\n\n\n\n\nhello"); //debugging
 					if (IsAdministrator())
 					{
 						try {
 							_httpListener.Prefixes.Add("http://localhost:5000"); }
 						catch {
-							Program.Error("Failed to add prefix", fatal:true); }
+							ProgramManager.Error("Failed to add prefix", fatal:true); }
 					}
 					else
-						Program.Error("Program requires administrator to run in this mode.", fatal: true);
+						ProgramManager.Error("Program requires administrator to run in this mode.", fatal: true);
 					break;
 				default:
-					Program.Error("Invalid argument");
+					ProgramManager.Error("Invalid mode argument");
 					goto case "local";
 			}
 			try {
 				_httpListener.Start(); // requires exe to be run as administrator
 			} 
 			catch {
-				Program.Error("failed to start server", true);
+				ProgramManager.Error("failed to start server", true);
 			}
 			Console.WriteLine("Server started.");
 			_responseThread = new Thread(new ThreadStart(ResponseThread));
@@ -61,12 +63,14 @@ namespace StreamLabs_Helper
 
 		void ResponseThread()
 		{
-			while (Program.ProgramStatus() == true)
+			while (ProgramManager.ProgramStatus())
 			{
 				if (pause) //pauses the thread if pause is true
 				{
 					lock (threadLock)
 					{
+						Console.WriteLine("paused");
+						Console.ReadKey();
 						Monitor.Wait(threadLock);
 					}
 				}
@@ -82,14 +86,14 @@ namespace StreamLabs_Helper
 				catch
 				{
 					Console.WriteLine("httpListener killed");
-					Program.CloseProgram();
+					ProgramManager.CloseProgram();
 				}
 			}
 		}
 
 		public void UpdateResponse(string response) //updates the reponse that the server will display
 		{
-			responseString = response;
+			responseString = responsePrefix + response + responseSuffix;
 		}
 
 		public static bool IsAdministrator()

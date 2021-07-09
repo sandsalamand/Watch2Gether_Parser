@@ -18,9 +18,15 @@ namespace StreamLabs_Helper
 		private MoveDirection moveDirection;
 		private const string backSlash = "\\";
 		private string driverDirectory;
-		private const string driverBinaryName = "MicrosoftWebDriver.exe";
 		private string[] edgeArguments =  new string[]	{
 			"headless", "disable-gpu", "window-size=1600,1200", "disable-extensions", "mute-audio", "enable-logging=false" };
+
+		public enum ParsingStatus
+		{
+			Success = 1,
+			Failure = 0,
+			FatalError = -1
+		}
 
 		private enum Direction
 		{
@@ -54,21 +60,28 @@ namespace StreamLabs_Helper
 			moveDirection.Direction = Direction.Right;
 		}
 
-		public bool FindIFrameOnPage(string url)
+		public ParsingStatus FindIFrameOnPage(string url)
 		{
 			WebDriverWait wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(5));
 			try {
 				webDriver.Navigate().GoToUrl(url);
 			}
 			catch {
-				Program.Error("URL does not exist", true);
-				return false;
+				ProgramManager.Error("URL does not exist", true);
+				return ParsingStatus.FatalError;
 			}
 			try
 			{
 				var button = webDriver.FindElement(By.CssSelector(".ui.green.button"));
+				if (button is null)
+					return ParsingStatus.FatalError;
 				button.Click();     //find and click the button to join the watch2gether room
-
+			}
+			catch {
+				ProgramManager.Error("not an accessible Watch2Gether url");
+				return ParsingStatus.Failure;
+			}
+			try {
 				var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
 				var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
 				webDriver.SwitchTo().Frame(iframes.First());
@@ -79,9 +92,10 @@ namespace StreamLabs_Helper
 				mouseActions.Build().Perform();
 			}
 			catch {
-				Program.Error("failed to parse");
+				ProgramManager.Error("failed to parse");
+				return ParsingStatus.Failure;
 			}
-			return true;
+			return ParsingStatus.Success;
 		}
 
 		public string GetIFrameTitle()
@@ -102,7 +116,7 @@ namespace StreamLabs_Helper
 			}
 			catch
 			{
-				Program.Error("failed to get iframe");
+				ProgramManager.Error("failed to get iframe");
 				return null;
 			}
 		}
@@ -110,7 +124,8 @@ namespace StreamLabs_Helper
 		//loop until the elements load
 		private IReadOnlyCollection<IWebElement> FindElements(By by)
 		{
-			while (webDriver is not null)
+			int callCounter = 0;
+			while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
 			{
 				var elements = webDriver.FindElements(by);
 
@@ -118,6 +133,7 @@ namespace StreamLabs_Helper
 					return elements;
 
 				Thread.Sleep(10);
+				callCounter++;
 			}
 			return null;
 		}
@@ -125,7 +141,8 @@ namespace StreamLabs_Helper
 		//same as above, but search from specific node
 		private IReadOnlyCollection<IWebElement> FindElementsFromElement(By by, IWebElement element)
 		{
-			while (webDriver is not null)
+			int callCounter = 0;
+			while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
 			{
 				var elements = element.FindElements(by);
 
@@ -133,6 +150,7 @@ namespace StreamLabs_Helper
 					return elements;
 
 				Thread.Sleep(10);
+				callCounter++;
 			}
 			return null;
 		}

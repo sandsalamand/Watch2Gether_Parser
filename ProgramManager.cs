@@ -10,7 +10,7 @@ namespace StreamLabs_Helper
 		static WebParser parser;
 		static Server server;
 		const double timerInterval = 3000;
-		static string url = "https://w2g.tv/rooms/bzi9rcbbtcom61hf4a?lang=en";
+		static string url = "https://w2g.tv/rooms/lf8nb4ap6btrxj7kd0?lang=en";
 		private static bool stayOpen = true;
 		private static bool cleanUpCalled = false;
 		public delegate WebParser.ParsingStatus ParsingAction();
@@ -135,10 +135,15 @@ namespace StreamLabs_Helper
 		static void CleanUp()
 		{
 			cleanUpCalled = true;
-			server.Close();
-			parser.Destroy();
-			timer.Stop();
-			timer.Close();
+			if (server is not null)
+				server.Dispose();
+			if (parser is not null)
+				parser.Destroy();
+			if (timer is not null)
+			{
+				timer.Stop();
+				timer.Close();
+			}
 		}
 	}
 }

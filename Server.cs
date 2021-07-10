@@ -7,16 +7,15 @@ using System.Security.Principal;
 
 namespace StreamLabs_Helper
 {
-	class Server
+	class Server : IDisposable
 	{
-		static HttpListener _httpListener = new HttpListener();
+		static volatile HttpListener _httpListener = new HttpListener();
 		Thread _responseThread;
-		const string responsePrefix = "<html><head><title>Watch2Gether Title Displayer</title></head><body>";
+		const string responsePrefix = "<html><head><title>Watch2Gether Title Displayer</title><meta http-equiv=\"refresh\" content=\"6\"></head><body>";
 		const string responseSuffix = "</body></html>";
 		const string defaultWelcome = responsePrefix + "<em>Server initializing.... If this takes longer than 10 seconds," +
 			"then it's bugged. Check to make sure a youtube video is playing (not a built-in Blender short), then restart this app.</em>" + responseSuffix;
 		private string responseString;
-		private bool pause = false;
 		private object threadLock = new object();
 
 		public Server(string message = defaultWelcome)
@@ -50,7 +49,7 @@ namespace StreamLabs_Helper
 					goto case "local";
 			}
 			try {
-				_httpListener.Start(); // requires exe to be run as administrator
+				_httpListener.Start(); // requires exe to be run as administrator for network mode
 			} 
 			catch {
 				ProgramManager.Error("failed to start server", true);
@@ -65,15 +64,6 @@ namespace StreamLabs_Helper
 		{
 			while (ProgramManager.ProgramStatus())
 			{
-				if (pause) //pauses the thread if pause is true
-				{
-					lock (threadLock)
-					{
-						Console.WriteLine("paused");
-						Console.ReadKey();
-						Monitor.Wait(threadLock);
-					}
-				}
 				try
 				{
 					HttpListenerContext context = _httpListener.GetContext();
@@ -103,16 +93,30 @@ namespace StreamLabs_Helper
 			return principal.IsInRole(WindowsBuiltInRole.Administrator);
 		}
 
-		public void Close()
+		public void Dispose()
 		{
-			pause = true;
-			_httpListener.Stop();
+			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
-
-		~Server() //called when instance is destroyed, just in case it's not destroyed properly
+		protected virtual void Dispose(bool disposing)
 		{
-			pause = true;
-			_httpListener.Stop();
+			if (!disposing)
+			{
+				return;
+			}
+			if (_httpListener == null)
+			{
+				return;
+			}
+			lock (threadLock)
+			{
+				if (_httpListener == null)
+				{
+					return;
+				}
+				_httpListener?.Stop();//double check
+				_httpListener = null;
+			}
 		}
 	}
 }

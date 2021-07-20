@@ -1,27 +1,31 @@
 ﻿using System;
 using System.Timers;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace StreamLabs_Helper
 {
 	static class ProgramManager
 	{
+		static string url;
 		static System.Timers.Timer timer;
 		static WebParser parser;
 		static Server server;
-		const double timerInterval = 3000;
-		static string url = "https://w2g.tv/rooms/lf8nb4ap6btrxj7kd0?lang=en";
+		public const double timerInterval = 3000;
 		private static bool stayOpen = true;
 		private static bool cleanUpCalled = false;
-		public delegate WebParser.ParsingStatus ParsingAction();
+		public delegate Task<WebParser.ParsingStatus> ParsingAction();
 		static ParsingAction parsingAction;
+		static ParsingAction parseTitle;
+		static ParsingAction findIframe;
 
 		static public void RunProgram(string[] args)
 		{
+			parseTitle = new ParsingAction(ParseAndUpdateServer);
 			server = new Server();
-			string serverParams = "local";
-			parsingAction = new ParsingAction(ParseAndUpdateServer);
-
+			UserData userDataCopy = DataManager.GetUserData();
+			string serverParams = userDataCopy.Prefs.mode;
+			url = userDataCopy.Prefs.url;
 			switch (args.Length)
 			{
 				case 0:
@@ -35,29 +39,30 @@ namespace StreamLabs_Helper
 				default:
 					break;
 			}
-
-			if (!server.StartServer(serverParams)) //default to using temporary listeners (local mode)
+			if (!server.StartServer(serverParams))
 			{
 				Error("Server failed to start.", true);
 				return;
 			}
 			parser = new WebParser();
-			switch (parser.FindIFrameOnPage(url))
+			switch (FindIFrameDontUpdateDelegate().Result)
 			{
 				case WebParser.ParsingStatus.Success:
+					Console.WriteLine("success");
+					parsingAction += parseTitle;
 					MainLoop();
 					break;
-				case WebParser.ParsingStatus.Failure:
-					parsingAction += new ParsingAction(FindIFrame);   //TODO: remove this from delegate once it is found
+				case WebParser.ParsingStatus.Failure:	//if parser failed to find the iframe, add iframe-parsing to the list of actions
+					findIframe = new ParsingAction(FindIFrame);
+					parsingAction += findIframe;
 					MainLoop();
 					break;
 				case WebParser.ParsingStatus.FatalError:
-					goto default;
-				default:
 					CloseProgram();
-					return;
+					break;
 			}
-			CloseProgram();
+			if (stayOpen)	//close program if not already told to
+				CloseProgram();
 			return;
 		}
 
@@ -85,20 +90,34 @@ namespace StreamLabs_Helper
 			Set_Timer(timerInterval);
 		}
 
-		static WebParser.ParsingStatus FindIFrame()
+		static async Task<WebParser.ParsingStatus> FindIFrameDontUpdateDelegate() //might need to de-async this since it needs to run once before program can do anything
 		{
-			var result = parser.FindIFrameOnPage(url);
-			if (result == WebParser.ParsingStatus.Success)
-				parsingAction -= new ParsingAction(FindIFrame);    //not sure if this works, might have to store a reference to the FindIFrame Action or call from outside this func
+			var result = await parser.FindIFrameOnPage(url);
+			Console.WriteLine("iframeResult: " + result);
 			return result;
 		}
 
-		static WebParser.ParsingStatus ParseAndUpdateServer()
+		static async Task<WebParser.ParsingStatus> FindIFrame()
 		{
-			string foundText;
+			var result = await parser.FindIFrameOnPage(url);
+			Console.WriteLine("iframeResult: " + result);
+			if (result == WebParser.ParsingStatus.Success && parsingAction.GetInvocationList()[0].Method.Name == findIframe.Method.Name)
+			{
+				parsingAction -= findIframe;
+				parsingAction += parseTitle;	//if iframe parsing succeeds, replace iframe checking with title checking in main loop
+			}
+			return result;
+		}
+
+		static async Task<WebParser.ParsingStatus> ParseAndUpdateServer()
+		{
 			try
 			{
-				foundText = parser.GetIFrameTitle();
+				string foundText = await parser.GetIFrameTitle();
+				Console.WriteLine("foundText: " + foundText);
+				if (foundText is null) {
+					return WebParser.ParsingStatus.Failure;
+				}
 				server.UpdateResponse(foundText);
 				return WebParser.ParsingStatus.Success;
 			}
@@ -130,15 +149,16 @@ namespace StreamLabs_Helper
 			stayOpen = false;
 			if (!cleanUpCalled)
 				CleanUp();
+			//Environment.Exit(0);
+			Console.WriteLine("\nThe Program Has Successfully Closed. You can close this window safely.\n");
 		}
 
 		static void CleanUp()
 		{
 			cleanUpCalled = true;
-			if (server is not null)
-				server.Dispose();
-			if (parser is not null)
-				parser.Destroy();
+			server?.Close();
+			server?.Dispose();
+			parser?.Destroy();
 			if (timer is not null)
 			{
 				timer.Stop();

@@ -8,6 +8,7 @@ using OpenQA.Selenium.Interactions;
 using Microsoft.Edge.SeleniumTools;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace StreamLabs_Helper
 {
@@ -60,7 +61,7 @@ namespace StreamLabs_Helper
 			moveDirection.Direction = Direction.Right;
 		}
 
-		public ParsingStatus FindIFrameOnPage(string url)
+		public async Task<ParsingStatus> FindIFrameOnPage(string url)
 		{
 			WebDriverWait wait = new WebDriverWait(webDriver, TimeSpan.FromSeconds(5));
 			try {
@@ -82,12 +83,12 @@ namespace StreamLabs_Helper
 				return ParsingStatus.Failure;
 			}
 			try {
-				var collection = webDriver.FindElements(By.ClassName("w2g-player-video"));
-				var iframes = FindElementsFromElement(By.CssSelector("iframe"), collection.First());
+				var collection = await FindElements(By.ClassName("w2g-player-video"));
+				var iframes = await FindElementsFromElement(By.CssSelector("iframe"), collection.First());
 				webDriver.SwitchTo().Frame(iframes.First());
 
 				mouseActions = new Actions(webDriver);
-				var mainVideo = FindElements(By.CssSelector("body"));
+				var mainVideo = await FindElements(By.CssSelector("body"));
 				mouseActions.MoveToElement(mainVideo.First());
 				mouseActions.Build().Perform();
 			}
@@ -98,21 +99,26 @@ namespace StreamLabs_Helper
 			return ParsingStatus.Success;
 		}
 
-		public string GetIFrameTitle()
+		public async Task<string> GetIFrameTitle()
 		{
 			try
 			{
-				//moves the mouse back and forth to keep the youtube title visible
-				mouseActions = new Actions(webDriver);
-				mouseActions.MoveByOffset(10 * ((int)moveDirection.Direction), 0);
-				mouseActions.Build().Perform();
+				if (webDriver is not null)
+				{
+					//moves the mouse back and forth to keep the youtube title visible
+					mouseActions = new Actions(webDriver);
+					mouseActions.MoveByOffset(10 * ((int)moveDirection.Direction), 0);
+					mouseActions.Build().Perform();
 
-				var title = FindElements(By.CssSelector(".ytp-chrome-top"));
-				string titleText = title.First().Text;
+					var title = await FindElements(By.CssSelector(".ytp-chrome-top"));
+					string titleText = title.First().Text;
 
-				//returns the string before the newline to remove "Watch Later" and "Share" from the string
-				var strArray = titleText.Split('\n');
-				return strArray[0];
+					//returns what is before the newline to remove "Watch Later" and "Share"
+					var strArray = titleText.Split('\n');
+					return strArray[0];
+				}
+				else
+					return null;
 			}
 			catch
 			{
@@ -122,37 +128,45 @@ namespace StreamLabs_Helper
 		}
 
 		//loop until the elements load
-		private IReadOnlyCollection<IWebElement> FindElements(By by)
+		private Task<IReadOnlyCollection<IWebElement>> FindElements(By by)
 		{
 			int callCounter = 0;
-			while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
+			Task<IReadOnlyCollection<IWebElement>> task = Task<IReadOnlyCollection<IWebElement>>.Factory.StartNew(() =>
 			{
-				var elements = webDriver.FindElements(by);
+				while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
+				{
+					var elements = webDriver.FindElements(by);
 
-				if (elements.Count > 0)
-					return elements;
+					if (elements.Count > 0)
+						return elements;
 
-				Thread.Sleep(10);
-				callCounter++;
-			}
-			return null;
+					Thread.Sleep(10);
+					callCounter++;
+				}
+				return null;
+			});
+			return task;
 		}
 
 		//same as above, but search from specific node
-		private IReadOnlyCollection<IWebElement> FindElementsFromElement(By by, IWebElement element)
+		private Task<IReadOnlyCollection<IWebElement>> FindElementsFromElement(By by, IWebElement element)
 		{
 			int callCounter = 0;
-			while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
+			Task<IReadOnlyCollection<IWebElement>> task = Task<IReadOnlyCollection<IWebElement>>.Factory.StartNew(() =>
 			{
-				var elements = element.FindElements(by);
+				while (webDriver is not null && callCounter < 8000) //should time out after 8 sec
+				{
+					var elements = element.FindElements(by);
 
-				if (elements.Count > 0)
-					return elements;
+					if (elements.Count > 0)
+						return elements;
 
-				Thread.Sleep(10);
-				callCounter++;
-			}
-			return null;
+					Thread.Sleep(10);
+					callCounter++;
+				}
+				return null;
+			});
+			return task;
 		}
 
 		private string GetApplicationExecutableDirectoryName()

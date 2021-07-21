@@ -5,7 +5,7 @@ namespace StreamLabs_Helper
 {
 	public class DataManager
 	{
-		private static string defaultUrl = "https://w2g.tv/rooms/e6shdqxijs69ovevtd?lang=en";
+		private static string defaultUrl = "https://w2g.tv/rooms/challengerandymusic-h749vkhemnt5dmld09?lang=en";
 		private static string prefFileName = "Preferences.txt";
 
 		private static string preferenceFilePath;

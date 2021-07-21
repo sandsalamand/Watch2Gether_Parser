@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Timers;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace StreamLabs_Helper
@@ -90,7 +89,7 @@ namespace StreamLabs_Helper
 			Set_Timer(timerInterval);
 		}
 
-		static async Task<WebParser.ParsingStatus> FindIFrameDontUpdateDelegate() //might need to de-async this since it needs to run once before program can do anything
+		static async Task<WebParser.ParsingStatus> FindIFrameDontUpdateDelegate()
 		{
 			var result = await parser.FindIFrameOnPage(url);
 			Console.WriteLine("iframeResult: " + result);
@@ -114,10 +113,10 @@ namespace StreamLabs_Helper
 			try
 			{
 				string foundText = await parser.GetIFrameTitle();
-				Console.WriteLine("foundText: " + foundText);
 				if (foundText is null) {
 					return WebParser.ParsingStatus.Failure;
 				}
+				Console.WriteLine("foundText: " + foundText);
 				server.UpdateResponse(foundText);
 				return WebParser.ParsingStatus.Success;
 			}
@@ -126,6 +125,11 @@ namespace StreamLabs_Helper
 				Error("parser failed");
 				return WebParser.ParsingStatus.Failure;
 			}
+		}
+
+		public static void Print(string message)
+		{
+			Console.WriteLine((message ?? "empty message") + Environment.NewLine);
 		}
 
 		public static void Error(string message = "unspecified error", bool fatal = false)

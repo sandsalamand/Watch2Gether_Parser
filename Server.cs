@@ -11,23 +11,13 @@ namespace StreamLabs_Helper
 	{
 		static volatile HttpListener _httpListener = new HttpListener();
 		Thread _responseThread;
-		private string responsePrefix;
-		private string responseSuffix;
 		private string responseString;
 		private object threadLock = new object();
 		private bool shouldRun = true;
 
 		public Server(string message = null)
 		{
-			string parseInterval = (ProgramManager.timerInterval / 1000).ToString();
-			Console.WriteLine("parseInterval: " + parseInterval);
-			responsePrefix =
-				"<html><head><title>Watch2Gether Title Displayer</title><meta http-equiv=\"refresh\" content=\""
-				 + parseInterval + "\"></head><body>";
-			responseSuffix = "</body></html>";
-			string defaultWelcome = responsePrefix + "<em>Server initializing.... If this takes longer than 10 seconds," +
-			"then it's bugged. Check to make sure a youtube video is playing (not a built-in Blender short), then restart this app.</em>" + responseSuffix;
-			responseString = message ?? defaultWelcome;
+			responseString = WebSite.FormSite(message);
 		}
 
 		public bool StartServer(string mode)
@@ -100,9 +90,9 @@ namespace StreamLabs_Helper
 			}
 		}
 
-		public void UpdateResponse(string response) //updates the reponse that the server will display
+		public void UpdateResponse(string newResponse) //updates the reponse that the server will display
 		{
-			responseString = responsePrefix + response + responseSuffix;
+			responseString = WebSite.FormSite(newResponse);
 		}
 
 		public static bool IsAdministrator()

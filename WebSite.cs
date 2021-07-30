@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿//This stores the css and html, and includes a method to build the site using the string parsed by WebParser
 
 namespace StreamLabs_Helper
 {
 	static class WebSite
 	{
-		static private int updateInterval = 3;    //change to use WebSite as timer authority
+		private const int updateInterval = ((int)ProgramManager.timerInterval) / 1000;
 		public static string defaultMessage { get; } = "<em>Server initializing.... If this takes longer than 10 seconds," +
 			"then it's bugged. Check to make sure a youtube video is playing (not a built-in Blender short), then restart this app.</em>";
 		private static HtmlStruct SiteHtml;

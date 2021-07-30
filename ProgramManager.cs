@@ -13,61 +13,70 @@ namespace StreamLabs_Helper
 		public const double timerInterval = 3000;
 		private static bool stayOpen = true;
 		private static bool cleanUpCalled = false;
-		public delegate Task<WebParser.ParsingStatus> ParsingAction();
+		private delegate Task<WebParser.ParsingStatus> ParsingAction();
 		static ParsingAction parsingAction;
 		static ParsingAction parseTitle;
 		static ParsingAction findIframe;
 
 		static public void RunProgram(string[] args)
 		{
-			parseTitle = new ParsingAction(ParseAndUpdateServer);
-			server = new Server();
-			UserData userDataCopy = DataManager.GetUserData();
-			string serverParams = userDataCopy.Prefs.mode;
-			url = userDataCopy.Prefs.url;
-			switch (args.Length)
+			using (server = new Server())
 			{
-				case 0:
-					break;
-				case 1:
-					serverParams = args[0];
-					break;
-				case 2:
-					url = args[1];
-					goto case 1;
-				default:
-					break;
-			}
-			if (!server.StartServer(serverParams))
-			{
-				Error("Server failed to start.", true);
-				return;
-			}
-			parser = new WebParser();
-			switch (FindIFrameDontUpdateDelegate().Result)
-			{
-				case WebParser.ParsingStatus.Success:
-					Console.WriteLine("success");
-					parsingAction += parseTitle;
-					MainLoop();
-					break;
-				case WebParser.ParsingStatus.Failure:	//if parser failed to find the iframe, add iframe-parsing to the list of actions
-					findIframe = new ParsingAction(FindIFrame);
-					parsingAction += findIframe;
-					MainLoop();
-					break;
-				case WebParser.ParsingStatus.FatalError:
+				parseTitle = new ParsingAction(ParseAndUpdateServer);
+				UserData userDataCopy = DataManager.GetUserData();
+				string serverParams = userDataCopy.Prefs.mode;
+				url = userDataCopy.Prefs.url;
+				switch (args.Length)
+				{
+					case 0:
+						break;
+					case 1:
+						serverParams = args[0];
+						break;
+					case 2:
+						url = args[1];
+						goto case 1;
+					default:
+						break;
+				}
+				if (!server.StartServer(serverParams))
+				{
+					Error("Server failed to start.", true);
 					CloseProgram();
-					break;
+					return;
+				}
+				parser = new WebParser();
+				switch (FindIFrameDontUpdateDelegate().Result)
+				{
+					case WebParser.ParsingStatus.Success:
+						Print("success");
+						parsingAction += parseTitle;
+						MainLoop();
+						break;
+					case WebParser.ParsingStatus.Failure:   //if parser failed to find the iframe, add iframe-parsing to the list of actions
+						Print("Failed to find an active youtube video on the url " + url + ". Close Program? y/n");
+						if (Console.ReadLine().Contains('y'))
+						{
+							CloseProgram();
+							return;
+						}
+						findIframe = new ParsingAction(FindIFrame);
+						parsingAction += findIframe;
+						MainLoop();
+						break;
+					case WebParser.ParsingStatus.FatalError:
+						CloseProgram();
+						break;
+				}
+				if (stayOpen)   //close program if not already told to
+					CloseProgram();
 			}
-			if (stayOpen)	//close program if not already told to
-				CloseProgram();
 			return;
 		}
 
 		static void MainLoop()
 		{
-			Console.WriteLine("\nProgram started. Press X to safely terminate\n");
+			Print("\nProgram started. Press X to safely terminate\n");
 			Set_Timer(timerInterval);
 			while (Console.ReadKey().Key != ConsoleKey.X && stayOpen)
 			{
@@ -92,14 +101,14 @@ namespace StreamLabs_Helper
 		static async Task<WebParser.ParsingStatus> FindIFrameDontUpdateDelegate()
 		{
 			var result = await parser.FindIFrameOnPage(url);
-			Console.WriteLine("iframeResult: " + result);
+			Print("iframeResult: " + result);
 			return result;
 		}
 
 		static async Task<WebParser.ParsingStatus> FindIFrame()
 		{
 			var result = await parser.FindIFrameOnPage(url);
-			Console.WriteLine("iframeResult: " + result);
+			Print("iframeResult: " + result);
 			if (result == WebParser.ParsingStatus.Success && parsingAction.GetInvocationList()[0].Method.Name == findIframe.Method.Name)
 			{
 				parsingAction -= findIframe;
@@ -116,7 +125,7 @@ namespace StreamLabs_Helper
 				if (foundText is null) {
 					return WebParser.ParsingStatus.Failure;
 				}
-				Console.WriteLine("foundText: " + foundText);
+				Print("foundText: " + foundText);
 				server.UpdateResponse(foundText);
 				return WebParser.ParsingStatus.Success;
 			}
@@ -134,11 +143,11 @@ namespace StreamLabs_Helper
 
 		public static void Error(string message = "unspecified error", bool fatal = false)
 		{
-			Console.WriteLine(message + "\n");
+			Print(message + "\n");
 			if (fatal)
 			{
 				CloseProgram();
-				Console.WriteLine("A fatal error has occurred. Press any key to close the program...");
+				Print("A fatal error has occurred. Press any key to close the program...");
 				Console.ReadKey();
 			}
 		}
@@ -154,7 +163,7 @@ namespace StreamLabs_Helper
 			if (!cleanUpCalled)
 				CleanUp();
 			//Environment.Exit(0);
-			Console.WriteLine("\nThe Program Has Successfully Closed. You can close this window safely.\n");
+			Print("\nThe Program Has Successfully Closed. You can close this window safely.\n");
 		}
 
 		static void CleanUp()

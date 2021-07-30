@@ -23,7 +23,7 @@ namespace StreamLabs_Helper
 		public bool StartServer(string mode)
 		{
 			mode ??= "local";   //sets mode to local if null argument was supplied
-			Console.WriteLine("Starting server in " + mode + " mode");
+			ProgramManager.Print("Starting server in " + mode + " mode");
 
 			switch (mode)
 			{
@@ -60,7 +60,7 @@ namespace StreamLabs_Helper
 				ProgramManager.Error("failed to start server", true);
 				return false;
 			}
-			Console.WriteLine("Server started.");
+			ProgramManager.Print("Server started.");
 			_responseThread = new Thread(new ThreadStart(ResponseThread));
 			_responseThread.Start(); // start the response thread
 			return true;
@@ -79,12 +79,12 @@ namespace StreamLabs_Helper
 						context.Response.OutputStream.Write(_responseArray, 0, _responseArray.Length);
 						context.Response.KeepAlive = false;
 						context.Response.Close();
-						Console.WriteLine("Response given to a request.");
+						ProgramManager.Print("Response given to a request.");
 					}
 				}
 				catch
 				{
-					Console.WriteLine("httpListener killed");
+					ProgramManager.Print("httpListener killed");
 					ProgramManager.CloseProgram();
 				}
 			}
